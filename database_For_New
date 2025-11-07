@@ -1,0 +1,195 @@
+-- Database: temple_management
+CREATE DATABASE IF NOT EXISTS temple_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE temple_management;
+
+-- Users table
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    role ENUM('admin', 'manager', 'viewer') DEFAULT 'viewer',
+    email VARCHAR(100),
+    phone VARCHAR(20),
+    avatar VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    last_login DATETIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Monks table
+CREATE TABLE monks (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    khmer_name VARCHAR(100) NOT NULL,
+    latin_name VARCHAR(100) NOT NULL,
+    monk_type ENUM('ភិក្ខុ', 'សាមណេរ') NOT NULL,
+    birth_date DATE,
+    ordination_date DATE,
+    role VARCHAR(100),
+    status ENUM('ផ្ទុក', 'រៀន', 'វិក្កយបត្រ', 'ចាកលោកិយ') DEFAULT 'ផ្ទុក',
+    kuti_id INT,
+    phone VARCHAR(20),
+    emergency_contact VARCHAR(100),
+    health_notes TEXT,
+    education_level VARCHAR(50),
+    special_skills TEXT,
+    profile_image VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Kuti table
+CREATE TABLE kuti (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    kuti_name VARCHAR(100) NOT NULL,
+    kuti_number VARCHAR(20),
+    location VARCHAR(255),
+    capacity INT DEFAULT 1,
+    facilities TEXT,
+    status ENUM('available', 'occupied', 'maintenance') DEFAULT 'available',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Attendance table
+CREATE TABLE attendance (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    monk_id INT NOT NULL,
+    attendance_date DATE NOT NULL,
+    morning_session ENUM('present', 'absent', 'late') DEFAULT 'present',
+    evening_session ENUM('present', 'absent', 'late') DEFAULT 'present',
+    special_notes TEXT,
+    recorded_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (monk_id) REFERENCES monks(id),
+    FOREIGN KEY (recorded_by) REFERENCES users(id)
+);
+
+-- Events table
+CREATE TABLE events (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    event_name VARCHAR(255) NOT NULL,
+    event_date DATE NOT NULL,
+    event_time TIME,
+    event_type ENUM('ceremony', 'meeting', 'special', 'holiday') NOT NULL,
+    description TEXT,
+    location VARCHAR(255),
+    organizer VARCHAR(100),
+    budget DECIMAL(10,2),
+    status ENUM('scheduled', 'completed', 'cancelled') DEFAULT 'scheduled',
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+-- Donations table
+CREATE TABLE donations (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    donor_name VARCHAR(100) NOT NULL,
+    donor_phone VARCHAR(20),
+    donor_email VARCHAR(100),
+    donation_type ENUM('money', 'food', 'materials', 'services') NOT NULL,
+    amount DECIMAL(10,2),
+    description TEXT,
+    donation_date DATE NOT NULL,
+    received_by INT,
+    receipt_number VARCHAR(50),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (received_by) REFERENCES users(id)
+);
+
+-- Expenses table
+CREATE TABLE expenses (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    expense_date DATE NOT NULL,
+    category ENUM('food', 'utilities', 'maintenance', 'ceremony', 'education', 'healthcare', 'other') NOT NULL,
+    description TEXT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    paid_to VARCHAR(100),
+    receipt_number VARCHAR(50),
+    approved_by INT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (approved_by) REFERENCES users(id)
+);
+
+-- Inventory table
+CREATE TABLE inventory (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    item_name VARCHAR(100) NOT NULL,
+    category ENUM('food', 'materials', 'ceremonial', 'office', 'medical') NOT NULL,
+    quantity INT NOT NULL,
+    unit VARCHAR(20),
+    min_stock_level INT DEFAULT 0,
+    location VARCHAR(100),
+    supplier VARCHAR(100),
+    last_restocked DATE,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Tasks table
+CREATE TABLE tasks (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    task_title VARCHAR(255) NOT NULL,
+    description TEXT,
+    assigned_to INT,
+    assigned_by INT,
+    priority ENUM('low', 'medium', 'high', 'urgent') DEFAULT 'medium',
+    status ENUM('pending', 'in_progress', 'completed', 'cancelled') DEFAULT 'pending',
+    due_date DATE,
+    completed_date DATE,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (assigned_to) REFERENCES monks(id),
+    FOREIGN KEY (assigned_by) REFERENCES users(id)
+);
+
+-- Logs table
+CREATE TABLE logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT,
+    action VARCHAR(100) NOT NULL,
+    description TEXT,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Settings table
+CREATE TABLE settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    setting_key VARCHAR(100) UNIQUE NOT NULL,
+    setting_value TEXT,
+    description TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Insert default admin user
+INSERT INTO users (username, password, full_name, role, email, phone) VALUES 
+('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System Administrator', 'admin', 'admin@temple.com', '012345678');
+
+-- Insert default kuti data
+INSERT INTO kuti (kuti_name, kuti_number, capacity, facilities) VALUES 
+('មហាកុដិ', 'K001', 1, 'ផ្ទះសំណាក់សំខាន់'),
+('កុដិបណ្ណាល័យ', 'K002', 2, 'បណ្ណាល័យ និងផ្ទះសំណាក់'),
+('កុដិសាលាបុណ្យ', 'K003', 3, 'សាលាបុណ្យ និងសំណាក់'),
+('កុដិឈើតូច', 'K004', 1, 'ផ្ទះឈើតូច'),
+('កុដិថ្មតូច', 'K005', 1, 'ផ្ទះថ្មតូច'),
+('កុដិសាលាឆាន់', 'K006', 4, 'សាលាឆាន់ និងសំណាក់');
+
+-- Insert default settings
+INSERT INTO settings (setting_key, setting_value, description) VALUES 
+('temple_name', 'វត្តឥន្ទខីលារាម ថ្មគោល', 'ឈ្មោះវត្ត'),
+('address', 'ផ្លូវជាតិលេខ៦, ភូមិថ្មគោល, ស្រុកដំបែ, ខេត្តកណ្ដាល', 'អាសយដ្ឋានវត្ត'),
+('contact_phone', '012 345 678', 'លេខទូរស័ព្ទទំនាក់ទំនង'),
+('contact_email', 'info@indrakhilaram.com', 'អ៊ីមែលទំនាក់ទំនង'),
+('established_year', '1995', 'ឆ្នាំបង្កើតវត្ត');

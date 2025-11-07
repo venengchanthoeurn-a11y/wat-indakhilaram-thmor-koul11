@@ -1,0 +1,81 @@
+-- SQL Script for Wat Management System
+-- Version: 2.1
+-- Database Name: Thmako_System
+-- WARNING: This version stores passwords in plain text and is NOT SECURE.
+-- It is highly recommended to use hashed passwords for production environments.
+
+-- Create the database with proper character set for Khmer language
+CREATE DATABASE IF NOT EXISTS Thmako_System
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+USE Thmako_System;
+
+-- Table for `kuti` (monk residences)
+CREATE TABLE IF NOT EXISTS `kuti` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `kuti_name` VARCHAR(150) NOT NULL COMMENT 'ឈ្មោះកុដិ',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table for `users` (for authentication)
+-- The password column now stores plain text passwords.
+CREATE TABLE IF NOT EXISTS `users` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `username` VARCHAR(50) NOT NULL UNIQUE,
+    `password` VARCHAR(255) NOT NULL COMMENT 'Plain text password - NOT SECURE',
+    `email` VARCHAR(100) UNIQUE,
+    `role` ENUM('admin', 'manager', 'viewer') NOT NULL DEFAULT 'viewer',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table for `monks`
+CREATE TABLE IF NOT EXISTS `monks` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `khmer_name` VARCHAR(255) NOT NULL COMMENT 'គោត្តនាម (ខ្មែរ)',
+    `latin_name` VARCHAR(255) NOT NULL COMMENT 'គោត្តនាម (ឡាតាំង)',
+    `birth_date` DATE NOT NULL,
+    `monk_type` ENUM('ភិក្ខុ', 'សាមណេរ','ព្រះចៅអធិការ') NOT NULL,
+    `education_level` VARCHAR(255) DEFAULT NULL,
+    `kuti_id` INT,
+    `role` VARCHAR(100) DEFAULT NULL COMMENT 'មុខងារ',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`kuti_id`) REFERENCES `kuti`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table for `attendance`
+CREATE TABLE IF NOT EXISTS `attendance` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `monk_id` INT NOT NULL,
+    `attendance_date` DATE NOT NULL,
+    `status` ENUM('វត្តមាន', 'អវត្តមាន', 'ច្បាប់') NOT NULL,
+    `recorded_by` INT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`monk_id`) REFERENCES `monks`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`recorded_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    UNIQUE KEY `unique_attendance` (`monk_id`, `attendance_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --- SAMPLE DATA INSERTION ---
+
+-- Insert sample kuti
+INSERT INTO `kuti` (`kuti_name`) VALUES
+('មហាកុដិ'),
+('កុដិបណ្ណាល័យ'),
+('កុដិសាលាបុណ្យ'),
+('កុដិឈើតូច'),
+('កុដិថ្មតូច'),
+('កុដិសាលាឆាន់');
+
+-- Insert sample users with PLAIN TEXT passwords
+-- THIS IS A SECURITY RISK.
+INSERT INTO `users` (`username`, `password`, `email`, `role`) VALUES
+('vthoeurn', 'vthoeurn123', 'admin@wat.org', 'admin'),
+('manager', 'manager123', 'manager@wat.org', 'manager');
+
+-- Insert sample monks
+INSERT INTO `monks` (`khmer_name`, `latin_name`, `birth_date`, `monk_type`, `education_level`, `kuti_id`, `role`) VALUES
+('អេង ចាន់ធឿន', 'Eng Chanthouern', '1990-05-15', 'ភិក្ខុ', 'បរិញ្ញាបត្រ', 1, 'មេកុដិ'),
+('ជឿន សម្បត្តិ', 'chhoeun sambath', '1995-03-22', 'សាមណេរ', 'មធ្យមសិក្សា', 2, 'សិស្ស');

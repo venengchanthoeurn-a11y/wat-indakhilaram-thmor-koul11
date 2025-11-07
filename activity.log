@@ -1,0 +1,7 @@
+[2025-10-25 12:33:06] admin (::1) - PAGE_ACCESS: Accessed dashboard - Section: dashboard (Module: dashboard)
+[2025-10-25 12:33:33] admin (::1) - PAGE_ACCESS: Accessed dashboard - Section: dashboard (Module: dashboard)
+[2025-10-25 12:33:33] admin (::1) - DATABASE_ERROR: Error fetching dashboard data: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'k.icon' in 'field list' (Module: system)
+[2025-10-25 12:34:08] admin (::1) - PAGE_ACCESS: Accessed dashboard - Section: dashboard (Module: dashboard)
+[2025-10-25 12:34:08] admin (::1) - DATABASE_ERROR: Error fetching dashboard data: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'k.icon' in 'field list' (Module: system)
+[2025-10-25 12:34:20] admin (::1) - PAGE_ACCESS: Accessed dashboard - Section: dashboard (Module: dashboard)
+[2025-10-25 12:34:20] admin (::1) - DATABASE_ERROR: Error fetching dashboard data: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'k.icon' in 'field list' (Module: system)
