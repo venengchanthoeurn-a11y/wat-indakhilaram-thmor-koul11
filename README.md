@@ -1,4 +1,143 @@
+<?php
+include 'config.php';
+requireLogin(); // Ensure user is logged in
 
+// Function to convert Arabic numerals to Khmer numerals (kept for potential future use or if needed elsewhere)
+function convertToArabicToKhmerNumerals($number) {
+    $khmer_numerals = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩'];
+    $arabic_numerals = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    return str_replace($arabic_numerals, $khmer_numerals, (string)$number);
+}
+
+// Handle monk deletion
+if (isset($_GET['delete'])) {
+    $id = filter_var($_GET['delete'], FILTER_VALIDATE_INT);
+    if ($id) {
+        try {
+            $stmt = $pdo->prepare("DELETE FROM monks WHERE id = ?");
+            $stmt->execute([$id]);
+            $_SESSION['message'] = "លុបព័តពាន់ព្រះសង្ឃជោគជ័យ!";
+            $_SESSION['message_type'] = "success";
+        } catch (PDOException $e) {
+            error_log("Error deleting monk: " . $e->getMessage());
+            $_SESSION['message'] = "មានបញ្ហាក្នុងការលុប។";
+            $_SESSION['message_type'] = "danger";
+        }
+    }
+    header("Location: dashboard.php");
+    exit();
+}
+
+// Handle status update - This section is kept but its direct use in the main table is removed as requested.
+// It can still be called from other pages or if needed in collapsed content.
+if (isset($_POST['update_status']) && isset($_POST['id']) && isset($_POST['status'])) {
+    $id = filter_var($_POST['id'], FILTER_VALIDATE_INT);
+    $status = filter_var($_POST['status'], FILTER_SANITIZE_STRING);
+    if (in_array($status, ['ផ្ទុក', 'រៀន'])) {
+        try {
+            $stmt = $pdo->prepare("UPDATE monks SET status = ? WHERE id = ?");
+            $stmt->execute([$status, $id]);
+            $_SESSION['message'] = "ធ្វើបច្ចុប្បន្នភាពស្ថានភាពជោគជ័យ!";
+            $_SESSION['message_type'] = "success";
+        } catch (PDOException $e) {
+            error_log("Error updating status: " . $e->getMessage());
+            $_SESSION['message'] = "មានបញ្ហាក្នុងការធ្វើបច្ចុប្បន្នភាព។";
+            $_SESSION['message_type'] = "danger";
+        }
+    } else {
+        $_SESSION['message'] = "ស្ថានភាពមិនត្រឹមត្រូវ។";
+        $_SESSION['message_type'] = "danger";
+    }
+    header("Location: dashboard.php");
+    exit();
+}
+
+// Initial kuti data insertion (run once to populate if empty)
+function initializeKuti($pdo) {
+    $kutiData = [
+        "មហាកុដិ",
+        "កុដិបណ្ណាល័យ",
+        "កុដិសាលាបុណ្យ",
+        "កុដិឈើតូច",
+        "កុដិថ្មតូច",
+        "កុដិសាលាឆាន់"
+    ];
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM kuti");
+    $stmt->execute();
+    $count = $stmt->fetchColumn();
+    if ($count == 0) {
+        foreach ($kutiData as $name) {
+            $stmt = $pdo->prepare("INSERT INTO kuti (kuti_name) VALUES (?)");
+            $stmt->execute([$name]);
+        }
+    }
+}
+initializeKuti($pdo);
+
+// Fetch statistics (numbers will be Arabic for display as per new request)
+$total_monks = $pdo->query("SELECT COUNT(*) FROM monks")->fetchColumn();
+$total_bhikku = $pdo->query("SELECT COUNT(*) FROM monks WHERE monk_type = 'ភិក្ខុ'")->fetchColumn();
+$total_samanera = $pdo->query("SELECT COUNT(*) FROM monks WHERE monk_type = 'សាមណេរ'")->fetchColumn();
+$total_kuti = $pdo->query("SELECT COUNT(*) FROM kuti")->fetchColumn();
+// Assuming 'attendance' table has an ID or unique row per attendance record
+$total_attendance = $pdo->query("SELECT COUNT(*) FROM attendance")->fetchColumn();
+
+
+// Data for the 6 new Table-cards
+$monks_list = [];
+$bhikku_list = [];
+$samanera_list = [];
+$kuti_list_data = []; // Renamed to avoid conflict with dropdown list
+$attendance_list = [];
+$logs_list = [];
+
+try {
+    // 1. Data for "បញ្ជីព្រះសង្ឃសរុប" (All monks)
+    $monks_list = $pdo->query("SELECT id, khmer_name, latin_name, birth_date, role FROM monks ORDER BY id ASC")->fetchAll();
+
+    // 2. Data for "បញ្ជីភិក្ខុថ្មីៗ"
+    $bhikku_list = $pdo->query("SELECT id, khmer_name, latin_name, birth_date, role FROM monks WHERE monk_type = 'ភិក្ខុ' ORDER BY id ASC LIMIT 5")->fetchAll();
+
+    // 3. Data for "បញ្ជីសាមណេរថ្មីៗ"
+    $samanera_list = $pdo->query("SELECT id, khmer_name, latin_name, birth_date, role FROM monks WHERE monk_type = 'សាមណេរ' ORDER BY id ASC LIMIT 5")->fetchAll();
+
+    // 4. Data for "បញ្ជីកុដិ"
+    $kuti_list_data = $pdo->query("SELECT k.id as kuti_id, k.kuti_name, COUNT(m.id) as monk_count FROM kuti k LEFT JOIN monks m ON k.id = m.kuti_id GROUP BY k.kuti_name, k.id ORDER BY k.id ASC LIMIT 5")->fetchAll();
+    
+    // 5. Data for "បញ្ជីវត្តមានថ្មីៗ"
+    $recent_attendance_data = $pdo->query("SELECT a.id as attendance_id, a.attendance_date, m.khmer_name, a.status FROM attendance a JOIN monks m ON a.monk_id = m.id ORDER BY a.id ASC LIMIT 5")->fetchAll();
+    
+    // 6. Data for "កំណត់ហេតុប្រព័ន្ធ"
+    // Assuming 'logs' table has 'id', 'action', and 'timestamp'
+    $logs_list = $pdo->query("SELECT id, action, timestamp FROM logs ORDER BY id ASC LIMIT 5")->fetchAll();
+
+} catch (PDOException $e) {
+    error_log("Database error: " . $e->getMessage());
+    $_SESSION['message'] = "មានបញ្ហាក្នុងការទាញយកទិន្នន័យពីមូលដ្ឋានទិន្នន័យ។ សូមពិនិត្យមើលថា database schema ត្រឹមត្រូវ។";
+    $_SESSION['message_type'] = "danger";
+    $monks_list = [];
+    $bhikku_list = [];
+    $samanera_list = [];
+    $kuti_list_data = [];
+    $recent_attendance_data = [];
+    $logs_list = [];
+}
+
+
+// Determine which section to display
+$current_section = isset($_GET['section']) ? $_GET['section'] : 'dashboard'; // Default to 'dashboard'
+?>
+
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ផ្ទាំងគ្រប់គ្រង - ប្រព័ន្ធគ្រប់គ្រងវត្ត</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Khmer+OS+Muol&family=Khmer+OS+Siemreap&display=swap" rel="stylesheet">
+    <style>
         /* Define a consistent color palette */
         :root {
             --primary-theme-gold: #D4AF37; /* Gold */
@@ -1250,4 +1389,3 @@
     </script>
 </body>
 </html>
-
